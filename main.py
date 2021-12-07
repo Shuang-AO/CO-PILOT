@@ -134,51 +134,6 @@ def run_for_config(config):
                 if cycle % config['general']['save_every_cycles'] == 0:
                     latest_saver.save(sess, global_step=global_step)
 
-                if cycle % config['general']['test_frequency'] == 0:
-                    # do test
-                    test_successes, test_cost, _, endpoints_by_path = trainer.collect_test_data(current_level, False)
-                    summaries_collector.write_test_success_summaries(
-                        sess, global_step, test_successes, test_cost, trainer.curriculum_coefficient)
-                    with open(episodic_success_rates_path, 'a') as f:
-                        f.write('{} {} {} {} {}'.format(
-                            current_level, trainer.train_episodes_counter, test_successes, test_cost, os.linesep))
-
-                    # new action
-                    print_and_log('old cost was {} at step {}'.format(best_cost, best_cost_global_step))
-                    print_and_log('current learn rates {}'.format(network.get_learn_rates(sess, current_level)))
-                    print_and_log('current base stds {}'.format(network.get_base_stds(sess, current_level)))
-                    if best_cost is None or test_cost < best_cost:
-                        print_and_log('new best cost {} at step {}'.format(test_cost, global_step))
-                        best_cost, best_cost_global_step = test_cost, global_step
-                        best_curriculum_coefficient = trainer.curriculum_coefficient
-                        no_test_improvement, consecutive_learn_rate_decrease = 0, 0
-                        best_saver.save(sess, global_step)
-                        test_trajectories_file = os.path.join(test_trajectories_dir, '{}.txt'.format(global_step))
-                        serialize_compress(endpoints_by_path, test_trajectories_file)
-                    else:
-                        print_and_log('new model is not the best with cost {} at step {}'.format(
-                            test_cost, global_step))
-                        no_test_improvement += 1
-                        print_and_log('no improvement count {} of {}'.format(
-                            no_test_improvement, decrease_learn_rate_if_static_success))
-                        if reset_best_every > 0 and no_test_improvement % reset_best_every == reset_best_every - 1:
-                            # restore the model for re-finding
-                            restore_best(sess, best_saver, best_curriculum_coefficient, trainer)
-                        if no_test_improvement == decrease_learn_rate_if_static_success:
-                            # restore the best model
-                            if config['model']['restore_on_decrease']:
-                                restore_best(sess, best_saver, best_curriculum_coefficient, trainer)
-                            # decrease learn rates
-                            network.decrease_learn_rates(sess, current_level)
-                            no_test_improvement = 0
-                            consecutive_learn_rate_decrease += 1
-                            print_and_log('decreasing learn rates {} of {}'.format(
-                                consecutive_learn_rate_decrease, stop_training_after_learn_rate_decrease)
-                            )
-                            print_and_log('new learn rates {}'.format(network.get_learn_rates(sess, current_level)))
-                            if consecutive_learn_rate_decrease == stop_training_after_learn_rate_decrease:
-                                break
-
                 if trainer.curriculum_coefficient is not None:
                     if success_ratio > config['curriculum']['raise_when_train_above']:
                         print_and_log('current curriculum coefficient {}'.format(trainer.curriculum_coefficient))
@@ -186,9 +141,6 @@ def run_for_config(config):
                         print_and_log('curriculum coefficient raised to {}'.format(trainer.curriculum_coefficient))
 
                 print_and_log(os.linesep)
-                # if we finished because we ran out of cycles, we still need to make one more test
-                end_of_level_test(best_cost, best_cost_global_step, best_curriculum_coefficient, best_saver, sess,
-                                  test_trajectories_dir, trainer, current_level)
 
         trainer_rl = train_eval(tf_agent, tf_env, eval_tf_env, interations,
                                 steps, batch_size, episodes, interval, log_interval, seed)
