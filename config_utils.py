@@ -8,7 +8,7 @@ def read_config(config_path=None):
     if config_path is None:
         config_path = os.path.join(get_config_directory(), 'config.yml')
     with open(config_path, 'r') as yml_file:
-        config = yaml.load(yml_file)
+        config = yaml.safe_load(yml_file)
         print('------------ Config ------------')
         print(yaml.dump(config))
         return config
