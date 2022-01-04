@@ -54,7 +54,7 @@ def run_for_config(config):
 
     # save
     scenario = config['general']['scenario']
-    working_dir = os.path.join(get_base_directory(), 'sgt', scenario)
+    working_dir = os.path.join(get_base_directory(), 'co_pilot_sgt_part', scenario)
     init_dir(working_dir)
 
     saver_dir = os.path.join(working_dir, 'models', model_name)
